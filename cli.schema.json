@@ -1,0 +1,221 @@
+{
+  "$id": "ICliConfig",
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "definitions": {},
+  "properties": {
+    "ethereum": {
+      "type": "object",
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "description": "Network endpoint URL"
+        },
+        "lockfilesDir": {
+          "type": "string",
+          "description": "Directory where contract deployment lock files stored"
+        },
+        "from": {
+          "type": "string",
+          "pattern": "^0x[a-zA-Z0-9]{40}$",
+          "description": "Network from address"
+        },
+        "gas": {
+          "type": "string",
+          "description": "Default Gas limit",
+          "pattern": "^\\d+(e\\d+)?$"
+        },
+        "gasPrice": {
+          "type": "string",
+          "description": "Default Gas price",
+          "pattern": "^\\d+(e\\d+)?$"
+        },
+        "SNPCToken": {
+          "type": "object",
+          "description": "SNPC token contract",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "Path to the contract schema"
+            },
+            "totalSupplyTokens": {
+              "type": "string"
+            },
+            "reservedTeamTokens": {
+              "type": "string"
+            },
+            "reservedBountyTokens": {
+              "type": "string"
+            },
+            "reservedReserveTokens": {
+              "type": "string"
+            },
+            "reservedPartnersTokens": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "schema",
+            "totalSupplyTokens",
+            "reservedTeamTokens",
+            "reservedBountyTokens",
+            "reservedReserveTokens",
+            "reservedPartnersTokens"
+          ]
+        },
+        "SNPCPreICO": {
+          "type": "object",
+          "description": "SNPC token pre-ico contract",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "Path to the contract schema"
+            },
+            "teamWallet": {
+              "type": "string",
+              "pattern": "^0x[a-zA-Z0-9]{40}$",
+              "description": "Team wallet address on network"
+            },
+            "lowCapTokens": {
+              "type": "string"
+            },
+            "hardCapTokens": {
+              "type": "string"
+            },
+            "lowCapTxWei": {
+              "type": "string"
+            },
+            "hardCapTxWei": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "schema",
+            "teamWallet",
+            "lowCapTokens",
+            "hardCapTokens",
+            "lowCapTxWei",
+            "hardCapTxWei"
+          ]
+        },
+        "SNPCICOStage1": {
+          "type": "object",
+          "description": "SNPC token ico contract",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "Path to the contract schema"
+            },
+            "teamWallet": {
+              "type": "string",
+              "pattern": "^0x[a-zA-Z0-9]{40}$",
+              "description": "Team wallet address on network"
+            },
+            "lowCapTokens": {
+              "type": "string"
+            },
+            "hardCapTokens": {
+              "type": "string"
+            },
+            "lowCapTxWei": {
+              "type": "string"
+            },
+            "hardCapTxWei": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "schema",
+            "teamWallet",
+            "lowCapTokens",
+            "hardCapTokens",
+            "lowCapTxWei",
+            "hardCapTxWei"
+          ]
+        },
+        "SNPCICOStage2": {
+          "type": "object",
+          "description": "SNPC token ico contract",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "Path to the contract schema"
+            },
+            "teamWallet": {
+              "type": "string",
+              "pattern": "^0x[a-zA-Z0-9]{40}$",
+              "description": "Team wallet address on network"
+            },
+            "lowCapTokens": {
+              "type": "string"
+            },
+            "hardCapTokens": {
+              "type": "string"
+            },
+            "lowCapTxWei": {
+              "type": "string"
+            },
+            "hardCapTxWei": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "schema",
+            "teamWallet",
+            "lowCapTokens",
+            "hardCapTokens",
+            "lowCapTxWei",
+            "hardCapTxWei"
+          ]
+        },
+        "SNPCICOStage3": {
+          "type": "object",
+          "description": "SNPC token ico contract",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "Path to the contract schema"
+            },
+            "teamWallet": {
+              "type": "string",
+              "pattern": "^0x[a-zA-Z0-9]{40}$",
+              "description": "Team wallet address on network"
+            },
+            "lowCapTokens": {
+              "type": "string"
+            },
+            "hardCapTokens": {
+              "type": "string"
+            },
+            "lowCapTxWei": {
+              "type": "string"
+            },
+            "hardCapTxWei": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "schema",
+            "teamWallet",
+            "lowCapTokens",
+            "hardCapTokens",
+            "lowCapTxWei",
+            "hardCapTxWei"
+          ]
+        }
+      },
+      "required": [
+        "endpoint",
+        "from",
+        "lockfilesDir",
+        "gas",
+        "gasPrice",
+        "SNPCToken",
+        "SNPCPreICO"
+      ]
+    }
+  },
+  "required": [
+    "ethereum"
+  ]
+}
