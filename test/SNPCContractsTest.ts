@@ -44,9 +44,6 @@ let preIco: ISNPCPreICO | null;
 let icoStage1: ISNPCICOStage1 | null;
 // ICO Stage 2 Instance
 let icoStage2: ISNPCICOStage2 | null;
-// TODO: stage 3 tests ?
-// // ICO Stage 3 Instance
-// let icoStage3: ISNPCICOStage3 | null;
 
 const state = {
     availableTokens: new BigNumber(0),
@@ -60,7 +57,8 @@ const state = {
     investor5Wei: new BigNumber(0),
     investor6Wei: new BigNumber(0),
     investor7Wei: new BigNumber(0),
-    investor8Wei: new BigNumber(0)
+    investor8Wei: new BigNumber(0),
+    investor9Wei: new BigNumber(0)
 };
 
 contract('SNPCContracts', function (accounts: string[]) {
@@ -78,6 +76,7 @@ contract('SNPCContracts', function (accounts: string[]) {
         investor6: accounts[cnt++],
         investor7: accounts[cnt++],
         investor8: accounts[cnt++],
+        investor9: accounts[cnt++],
         reserve1: accounts[cnt++],
         teamWallet: accounts[cnt++]
     } as { [k: string]: string };
@@ -280,6 +279,37 @@ contract('SNPCContracts', function (accounts: string[]) {
         assert.equal(await ico.teamWallet.call(), actors.teamWallet);
     });
 
+    it('preICO lifecycle: transfer-tokens', async () => {
+        const token = await SNPCToken.deployed();
+        assert.isTrue(preIco != null);
+        const ico = preIco!!;
+
+        assert.equal(await ico.state.call(), ICOState.Active);
+
+        let investor9Tokens = new BigNumber(0);
+        assert.equal(await token.balanceOf.call(actors.investor9), investor9Tokens.toString());
+
+        assert.equal(web3.eth.getBalance(actors.investor9).toString(), new BigNumber('100e18').toString());
+
+        await assertEvmThrows(ico.transferTokens(actors.investor9, tokens(5000), {from: actors.someone1}));
+
+        state.availableTokens = state.availableTokens.sub(tokens(5000));
+        const txres = await ico.transferTokens(actors.investor9, tokens(5000));
+
+        assert.equal(txres.logs[0].event, 'ICOTokensTransfer');
+        assert.equal(txres.logs[0].args.investor, actors.investor9);
+        assert.equal(txres.logs[0].args.tokens, tokens(5000).toString());
+
+        investor9Tokens = investor9Tokens.add(txres.logs[0].args.tokens);
+        assert.equal(await token.balanceOf.call(actors.investor9), txres.logs[0].args.tokens.toString());
+        assert.equal(await token.balanceOf.call(actors.investor9), investor9Tokens.toString());
+        assert.equal((await token.availableSupply.call()).toString(), state.availableTokens.toString());
+        assert.equal((await ico.getInvestments.call(actors.investor9)).toString(), state.investor9Wei.toString()); // not changed
+
+        assert.equal(web3.eth.getBalance(actors.teamWallet).toString(), state.teamWalletBalance.toString());
+        assert.equal(web3.eth.getBalance(actors.investor9).toString(), new BigNumber('100e18').toString());
+    });
+
     it('preICO lifecycle: invest', async () => {
         const token = await SNPCToken.deployed();
         assert.isTrue(preIco != null);
@@ -382,28 +412,6 @@ contract('SNPCContracts', function (accounts: string[]) {
 
         await ico.resume({from: actors.owner});
         assert.equal(await ico.state.call(), ICOState.Active);
-
-        // fixme: remove, reason: low cap is zero.
-        // let requiredWei = new BigNumber(await ico.lowCapWei.call());
-        // requiredWei = requiredWei.sub(await ico.collectedWei.call());
-        //
-        // await ico.whitelist(actors.investor3);
-        // state.availableTokens = state.availableTokens.sub(wei2rawtokens(requiredWei, PREICO_ETH_TOKEN_EXCHANGE_RATIO));
-        // const txres = await ico.sendTransaction({
-        //     value: requiredWei,
-        //     from: actors.investor3
-        // });
-        //
-        // state.sentWei = state.sentWei.add(requiredWei);
-        // state.investor3Wei = state.investor3Wei.add(requiredWei);
-        // assert.equal(txres.logs[0].event, 'ICOInvestment');
-        // assert.equal(txres.logs[0].args.investedWei, requiredWei.toString());
-        // assert.equal((await token.availableSupply.call()).toString(), state.availableTokens.toString());
-        // // assert.equal((await ico.lowCapTokens.call()).toString(), (await ico.collectedWei.call()).toString());
-        // assert.equal((await ico.getInvestments.call(actors.investor3)).toString(), state.investor3Wei.toString());
-        //
-        // state.teamWalletBalance = state.teamWalletBalance.add(requiredWei);
-        // assert.equal(web3.eth.getBalance(actors.teamWallet).toString(), state.teamWalletBalance.toString());
 
         assert.equal((await ico.collectedWei.call()).toString(), state.sentWei.toString());
         assert.equal(await ico.state.call(), ICOState.Active);
@@ -606,8 +614,6 @@ contract('SNPCContracts', function (accounts: string[]) {
         assert.equal(txres.logs[0].event, 'ICOInvestment');
         assert.equal(txres.logs[0].args.investedWei, requiredWei.toString());
         assert.equal((await token.availableSupply.call()).toString(), state.availableTokens.toString());
-        // TODO: check fill low cap
-        // assert.equal((await ico.lowCapTokens.call()).toString(), (await ico.collectedWei.call()).toString());
         assert.equal((await ico.getInvestments.call(actors.investor6)).toString(), state.investor6Wei.toString());
 
         state.teamWalletBalance = state.teamWalletBalance.add(requiredWei);
