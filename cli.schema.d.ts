@@ -38,79 +38,8 @@ export interface ICliConfig {
       reservedTeamTokens: string;
       reservedBountyTokens: string;
       reservedReserveTokens: string;
-      reservedPartnersTokens: string;
-      [k: string]: any;
-    };
-    /**
-     * SNPC token pre-ico contract
-     */
-    SNPCPreICO: {
-      /**
-       * Path to the contract schema
-       */
-      schema: string;
-      /**
-       * Team wallet address on network
-       */
-      teamWallet: string;
-      lowCapTokens: string;
-      hardCapTokens: string;
-      lowCapTxWei: string;
-      hardCapTxWei: string;
-      [k: string]: any;
-    };
-    /**
-     * SNPC token ico contract
-     */
-    SNPCICOStage1?: {
-      /**
-       * Path to the contract schema
-       */
-      schema: string;
-      /**
-       * Team wallet address on network
-       */
-      teamWallet: string;
-      lowCapTokens: string;
-      hardCapTokens: string;
-      lowCapTxWei: string;
-      hardCapTxWei: string;
-      [k: string]: any;
-    };
-    /**
-     * SNPC token ico contract
-     */
-    SNPCICOStage2?: {
-      /**
-       * Path to the contract schema
-       */
-      schema: string;
-      /**
-       * Team wallet address on network
-       */
-      teamWallet: string;
-      lowCapTokens: string;
-      hardCapTokens: string;
-      lowCapTxWei: string;
-      hardCapTxWei: string;
-      [k: string]: any;
-    };
-    /**
-     * SNPC token ico contract
-     */
-    SNPCICOStage3?: {
-      /**
-       * Path to the contract schema
-       */
-      schema: string;
-      /**
-       * Team wallet address on network
-       */
-      teamWallet: string;
-      lowCapTokens: string;
-      hardCapTokens: string;
-      lowCapTxWei: string;
-      hardCapTxWei: string;
+      reservedAdvisorsTokens: string;
+      reservedStackingBonusTokens: string;
       [k: string]: any;
     };
     [k: string]: any;

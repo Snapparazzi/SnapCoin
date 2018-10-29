@@ -50,7 +50,10 @@
             "reservedReserveTokens": {
               "type": "string"
             },
-            "reservedPartnersTokens": {
+            "reservedAdvisorsTokens": {
+              "type": "string"
+            },
+            "reservedStackingBonusTokens": {
               "type": "string"
             }
           },
@@ -60,147 +63,8 @@
             "reservedTeamTokens",
             "reservedBountyTokens",
             "reservedReserveTokens",
-            "reservedPartnersTokens"
-          ]
-        },
-        "SNPCPreICO": {
-          "type": "object",
-          "description": "SNPC token pre-ico contract",
-          "properties": {
-            "schema": {
-              "type": "string",
-              "description": "Path to the contract schema"
-            },
-            "teamWallet": {
-              "type": "string",
-              "pattern": "^0x[a-zA-Z0-9]{40}$",
-              "description": "Team wallet address on network"
-            },
-            "lowCapTokens": {
-              "type": "string"
-            },
-            "hardCapTokens": {
-              "type": "string"
-            },
-            "lowCapTxWei": {
-              "type": "string"
-            },
-            "hardCapTxWei": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "schema",
-            "teamWallet",
-            "lowCapTokens",
-            "hardCapTokens",
-            "lowCapTxWei",
-            "hardCapTxWei"
-          ]
-        },
-        "SNPCICOStage1": {
-          "type": "object",
-          "description": "SNPC token ico contract",
-          "properties": {
-            "schema": {
-              "type": "string",
-              "description": "Path to the contract schema"
-            },
-            "teamWallet": {
-              "type": "string",
-              "pattern": "^0x[a-zA-Z0-9]{40}$",
-              "description": "Team wallet address on network"
-            },
-            "lowCapTokens": {
-              "type": "string"
-            },
-            "hardCapTokens": {
-              "type": "string"
-            },
-            "lowCapTxWei": {
-              "type": "string"
-            },
-            "hardCapTxWei": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "schema",
-            "teamWallet",
-            "lowCapTokens",
-            "hardCapTokens",
-            "lowCapTxWei",
-            "hardCapTxWei"
-          ]
-        },
-        "SNPCICOStage2": {
-          "type": "object",
-          "description": "SNPC token ico contract",
-          "properties": {
-            "schema": {
-              "type": "string",
-              "description": "Path to the contract schema"
-            },
-            "teamWallet": {
-              "type": "string",
-              "pattern": "^0x[a-zA-Z0-9]{40}$",
-              "description": "Team wallet address on network"
-            },
-            "lowCapTokens": {
-              "type": "string"
-            },
-            "hardCapTokens": {
-              "type": "string"
-            },
-            "lowCapTxWei": {
-              "type": "string"
-            },
-            "hardCapTxWei": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "schema",
-            "teamWallet",
-            "lowCapTokens",
-            "hardCapTokens",
-            "lowCapTxWei",
-            "hardCapTxWei"
-          ]
-        },
-        "SNPCICOStage3": {
-          "type": "object",
-          "description": "SNPC token ico contract",
-          "properties": {
-            "schema": {
-              "type": "string",
-              "description": "Path to the contract schema"
-            },
-            "teamWallet": {
-              "type": "string",
-              "pattern": "^0x[a-zA-Z0-9]{40}$",
-              "description": "Team wallet address on network"
-            },
-            "lowCapTokens": {
-              "type": "string"
-            },
-            "hardCapTokens": {
-              "type": "string"
-            },
-            "lowCapTxWei": {
-              "type": "string"
-            },
-            "hardCapTxWei": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "schema",
-            "teamWallet",
-            "lowCapTokens",
-            "hardCapTokens",
-            "lowCapTxWei",
-            "hardCapTxWei"
+            "reservedAdvisorsTokens",
+            "reservedStackingBonusTokens"
           ]
         }
       },
@@ -210,8 +74,7 @@
         "lockfilesDir",
         "gas",
         "gasPrice",
-        "SNPCToken",
-        "SNPCPreICO"
+        "SNPCToken"
       ]
     }
   },

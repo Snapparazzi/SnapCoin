@@ -6,25 +6,20 @@ import path = require('path');
 import {Strings} from './lib/utils';
 import * as Web3 from 'web3';
 import {address, IContract} from './globals';
-import {ISNPCToken, ISNPCPreICO, ISNPCICOStage1, ISNPCICOStage2, ISNPCICOStage3, ICOState} from './contracts';
+import {ISNPCToken} from './contracts';
 import {ICliConfig} from './cli.schema';
-import {toIcoStateIdToName, tokenGroupToId} from './lib/w3contracts/utils';
+import {tokenGroupToId} from './lib/w3contracts/utils';
 import * as BigNumber from 'bignumber.js';
-import moment = require('moment');
 import readline = require('readline');
 
-type ContractName = 'SNPCToken' | 'SNPCPreICO' | 'SNPCICOStage1' | 'SNPCICOStage2'| 'SNPCICOStage3';
+type ContractName = 'SNPCToken';
 
 const ctx = {
-  contractNames: ['SNPCToken', 'SNPCPreICO', 'SNPCICOStage1', 'SNPCICOStage2', 'SNPCICOStage3'],
+  contractNames: ['SNPCToken'],
   cmdOpts: new Array<string>(),
   verbose: false,
   cfile: 'cli.yml',
   SNPCToken: {},
-  SNPCPreICO: {},
-  SNPCICOStage1: {},
-  SNPCICOStage2: {},
-  SNPCICOStage3: {}
 } as {
   contractNames: string[];
   cmd: string;
@@ -37,22 +32,6 @@ const ctx = {
   SNPCToken: {
     meta: IContract<ISNPCToken>;
     instance: ISNPCToken;
-  };
-  SNPCPreICO: {
-    meta: IContract<ISNPCPreICO>;
-    instance: ISNPCPreICO;
-  };
-  SNPCICOStage1: {
-    meta: IContract<ISNPCICOStage1>;
-    instance: ISNPCICOStage1;
-  };
-  SNPCICOStage2: {
-    meta: IContract<ISNPCICOStage2>;
-    instance: ISNPCICOStage2;
-  };
-  SNPCICOStage3: {
-    meta: IContract<ISNPCICOStage3>;
-    instance: ISNPCICOStage3;
   };
 };
 
@@ -177,6 +156,11 @@ function writeDeployedContractAddress(contract: string, addr: address) {
   fs.writeFileSync(p, addr);
 }
 
+function deleteDeployedContractAddress(contract: string) {
+  const p = path.join(ctx.cfg.ethereum.lockfilesDir, `${contract}.lock`);
+  fs.unlinkSync(p);
+}
+
 function failIfDeployed(cname?: ContractName) {
   const c = ctx as any;
   if (cname) {
@@ -228,16 +212,37 @@ function checkEthNetwork(): Promise<void> {
   });
 }
 
-function confirm(question: string): Promise<void> {
+function confirm(question: string, validAnswer: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    rl.question(question + " (YES/no) ", (answer) => {
-      if (answer === 'YES') {
+    rl.question(question, (answer) => {
+      if (answer === validAnswer) {
         resolve();
       } else {
         reject();
       }
       rl.close();
     });
+  });
+}
+
+function signSelfdestruct(contractAddress: string): Promise<any> {
+  return new Promise(function (res, rej) {
+    const message = Buffer.from('Signed for Selfdestruct').toString('hex') // convert to hex
+                    + contractAddress.replace(/^0x/, '')
+                    + ctx.cfg.ethereum.from.replace(/^0x/, '');
+
+    const hash = ctx.web3.sha3(message, {encoding: 'hex'});
+    const signature = ctx.web3.eth.sign(ctx.cfg.ethereum.from, hash).slice(2);
+    if (!!signature) {
+      res({
+            v: Number(signature.substring(128, 130)) + 27,
+            r: '0x' + signature.substring(0, 64),
+            s: '0x' + signature.substring(64, 128),
+          });
+    } else {
+      console.error('\x1b[41m%s\x1b[37m', 'Could not sign message for address:', '\x1b[0m', contractAddress);
+    }
+    rej(null);
   });
 }
 
@@ -256,94 +261,15 @@ handlers['deploy'] = async () => {
         icfg.totalSupplyTokens,
         icfg.reservedTeamTokens,
         icfg.reservedBountyTokens,
-        icfg.reservedPartnersTokens,
+        icfg.reservedAdvisorsTokens,
         icfg.reservedReserveTokens,
+        icfg.reservedStackingBonusTokens,
         {
           from: ctx.cfg.ethereum.from
         }
     );
     console.log(`SNPCToken successfully deployed at: ${ctx.SNPCToken.instance.address}\n\n`);
     writeDeployedContractAddress('SNPCToken', ctx.SNPCToken.instance.address);
-  }
-  if (!ctx.SNPCPreICO.instance) {
-    icfg = ctx.cfg.ethereum.SNPCPreICO;
-    console.log(`Deployment: 'SNPCPreICO' `, icfg);
-    ctx.SNPCPreICO.instance = await ctx.SNPCPreICO.meta.new(
-        ctx.SNPCToken.instance.address,
-        icfg.teamWallet,
-        icfg.lowCapTokens,
-        icfg.hardCapTokens,
-        icfg.lowCapTxWei,
-        icfg.hardCapWei,
-        {
-          from: ctx.cfg.ethereum.from
-        }
-    );
-    console.log(`SNPCPreICO successfully deployed at: ${ctx.SNPCPreICO.instance.address}\n\n`);
-    writeDeployedContractAddress('SNPCPreICO', ctx.SNPCPreICO.instance.address);
-  }
-  if (!ctx.SNPCICOStage1.instance) {
-    icfg = ctx.cfg.ethereum.SNPCICOStage1;
-    if (!!icfg) {
-      console.log(`Deployment: 'SNPCICOStage1' `, icfg);
-      ctx.SNPCICOStage1.instance = await ctx.SNPCICOStage1.meta.new(
-          ctx.SNPCToken.instance.address,
-          icfg.teamWallet,
-          icfg.lowCapWei,
-          icfg.hardCapWei,
-          icfg.lowCapTxWei,
-          icfg.hardCapWei,
-          {
-            from: ctx.cfg.ethereum.from
-          }
-      );
-      console.log(`SNPCICOStage1 successfully deployed at: ${ctx.SNPCICOStage1.instance.address}\n\n`);
-      writeDeployedContractAddress('SNPCICOStage1', ctx.SNPCICOStage1.instance.address);
-    } else {
-      console.warn(`SNPCICOStage1 not configured. Skipped`);
-    }
-  }
-  if (!ctx.SNPCICOStage2.instance) {
-    icfg = ctx.cfg.ethereum.SNPCICOStage2;
-    if (!!icfg) {
-      console.log(`Deployment: 'SNPCICOStage2' `, icfg);
-      ctx.SNPCICOStage2.instance = await ctx.SNPCICOStage2.meta.new(
-          ctx.SNPCToken.instance.address,
-          icfg.teamWallet,
-          icfg.lowCapWei,
-          icfg.hardCapWei,
-          icfg.lowCapTxWei,
-          icfg.hardCapWei,
-          {
-            from: ctx.cfg.ethereum.from
-          }
-      );
-      console.log(`SNPCICOStage2 successfully deployed at: ${ctx.SNPCICOStage2.instance.address}\n\n`);
-      writeDeployedContractAddress('SNPCICOStage2', ctx.SNPCICOStage2.instance.address);
-    } else {
-      console.warn(`SNPCICOStage2 not configured. Skipped`);
-    }
-  }
-  if (!ctx.SNPCICOStage3.instance) {
-    icfg = ctx.cfg.ethereum.SNPCICOStage3;
-    if (!!icfg) {
-      console.log(`Deployment: 'SNPCICOStage3' `, icfg);
-      ctx.SNPCICOStage3.instance = await ctx.SNPCICOStage3.meta.new(
-          ctx.SNPCToken.instance.address,
-          icfg.teamWallet,
-          icfg.lowCapWei,
-          icfg.hardCapWei,
-          icfg.lowCapTxWei,
-          icfg.hardCapWei,
-          {
-            from: ctx.cfg.ethereum.from
-          }
-      );
-      console.log(`SNPCICOStage3 successfully deployed at: ${ctx.SNPCICOStage3.instance.address}\n\n`);
-      writeDeployedContractAddress('SNPCICOStage3', ctx.SNPCICOStage3.instance.address);
-    } else {
-      console.warn(`SNPCICOStage3 not configured. Skipped`);
-    }
   }
 };
 
@@ -353,80 +279,15 @@ handlers['deploy'] = async () => {
 handlers['status'] = async () => {
   await checkEthNetwork();
   failIfNotDeployed('SNPCToken');
-  failIfNotDeployed('SNPCPreICO');
   const token = ctx.SNPCToken.instance;
-  const preIco = ctx.SNPCPreICO.instance;
   const data = {};
   (<any>data)['token'] = {
     address: token.address,
     owner: await token.owner.call(),
     symbol: await token.symbol.call(),
     totalSupply: await token.totalSupply.call(),
-    availableSupply: await token.availableSupply.call(),
     locked: await token.locked.call()
   };
-  (<any>data)['pre-ico'] = {
-    address: preIco.address,
-    owner: await preIco.owner.call(),
-    teamWallet: await preIco.teamWallet.call(),
-    state: toIcoStateIdToName((await preIco.state.call()) as any),
-    weiCollected: await preIco.collectedWei.call(),
-    tokensSold: await preIco.tokensSold.call(),
-    investorCount: await preIco.investorCount.call(),
-    lowCapTokens: await preIco.lowCapTokens.call(),
-    hardCapTokens: await preIco.hardCapTokens.call(),
-    lowCapTxWei: await preIco.lowCapTxWei.call(),
-    hardCapTxWei: await preIco.hardCapTxWei.call()
-  };
-  const c = ctx as any;
-  if (c['SNPCICOStage1'].instance) {
-    const ico = ctx.SNPCICOStage1.instance;
-    (<any>data)['stage1'] = {
-      address: ico.address,
-      owner: await ico.owner.call(),
-      teamWallet: await ico.teamWallet.call(),
-      state: toIcoStateIdToName((await ico.state.call()) as any),
-      weiCollected: await ico.collectedWei.call(),
-      tokensSold: await ico.tokensSold.call(),
-      investorCount: await ico.investorCount.call(),
-      lowCapTokens: await ico.lowCapTokens.call(),
-      hardCapTokens: await ico.hardCapTokens.call(),
-      lowCapTxWei: await ico.lowCapTxWei.call(),
-      hardCapTxWei: await ico.hardCapTxWei.call()
-    };
-  }
-  if (c['SNPCICOStage2'].instance) {
-    const ico = ctx.SNPCICOStage2.instance;
-    (<any>data)['stage2'] = {
-      address: ico.address,
-      owner: await ico.owner.call(),
-      teamWallet: await ico.teamWallet.call(),
-      state: toIcoStateIdToName((await ico.state.call()) as any),
-      weiCollected: await ico.collectedWei.call(),
-      tokensSold: await ico.tokensSold.call(),
-      investorCount: await ico.investorCount.call(),
-      lowCapTokens: await ico.lowCapTokens.call(),
-      hardCapTokens: await ico.hardCapTokens.call(),
-      lowCapTxWei: await ico.lowCapTxWei.call(),
-      hardCapTxWei: await ico.hardCapTxWei.call()
-    };
-  }
-  if (c['SNPCICOStage3'].instance) {
-    const ico = ctx.SNPCICOStage3.instance;
-    (<any>data)['stage3'] = {
-      address: ico.address,
-      owner: await ico.owner.call(),
-      teamWallet: await ico.teamWallet.call(),
-      state: toIcoStateIdToName((await ico.state.call()) as any),
-      weiCollected: await ico.collectedWei.call(),
-      tokensSold: await ico.tokensSold.call(),
-      investorCount: await ico.investorCount.call(),
-      lowCapTokens: await ico.lowCapTokens.call(),
-      hardCapTokens: await ico.hardCapTokens.call(),
-      lowCapTxWei: await ico.lowCapTxWei.call(),
-      hardCapTxWei: await ico.hardCapTxWei.call()
-    };
-  }
   console.log(JSON.stringify(data, null, 2));
 };
 
@@ -463,152 +324,6 @@ handlers['group'] = async () => {
   }
 };
 
-handlers['ico'] = async () => {
-  await checkEthNetwork();
-  const stage = ctx.cmdOpts.shift();
-  let ico = ctx.SNPCPreICO.instance; // This value is not used, but suppress error noImplicitAny in 'terminate' branch
-  let icoName = null;
-  let icoPrev = null;
-  let icoPrevName = null;
-  failIfNotDeployed('SNPCToken');
-  switch (stage) {
-    case 'pre':
-      failIfNotDeployed('SNPCPreICO');
-      ico = ctx.SNPCPreICO.instance;
-      icoName = 'SNPCPreICO';
-      break;
-    case 'stage1':
-      failIfNotDeployed('SNPCICOStage1');
-      ico = ctx.SNPCICOStage1.instance;
-      icoName = 'SNPCICOStage1';
-      icoPrev = ctx.SNPCPreICO.instance;
-      icoPrevName = 'SNPCPreICO';
-      break;
-    case 'stage2':
-      failIfNotDeployed('SNPCICOStage2');
-      ico = ctx.SNPCICOStage2.instance;
-      icoName = 'SNPCICOStage2';
-      icoPrev = ctx.SNPCICOStage1.instance;
-      icoPrevName = 'SNPCICOStage1';
-      break;
-    case 'stage3':
-      failIfNotDeployed('SNPCICOStage3');
-      ico = ctx.SNPCICOStage3.instance;
-      icoName = 'SNPCICOStage3';
-      icoPrev = ctx.SNPCICOStage2.instance;
-      icoPrevName = 'SNPCICOStage2';
-      break;
-    default:
-      throw new Error(`Unknown ico sub-command: ${stage || ''}`);
-  }
-  const wcmd = ctx.cmdOpts.shift();
-  let end = null;
-  switch (wcmd) {
-    case 'state':
-      console.log({
-                    status: toIcoStateIdToName(new BigNumber(await ico.state.call()))
-                  });
-      break;
-    case 'start':
-      !!icoPrevName && failIfNotDeployed(icoPrevName as ContractName);
-      end = moment.utc(pullCmdArg('end'));
-      if (!end.unix() || end.isBefore(moment().utc())) {
-        throw new Error('End date is before current time');
-      }
-      if (!!icoPrev) {
-        const icoAddrCur = await ctx.SNPCToken.instance.ico.call();
-        const icoPrevStatus = (new BigNumber(await icoPrev.state.call())).toNumber();
-        if (icoAddrCur.toString().toLowerCase() !== icoPrev.address.toString().toLowerCase()) {
-          throw new Error(`SNPCToken must use ${icoPrevName} address for deploy ${icoName}`);
-        }
-        if (icoPrevStatus === ICOState.Active ||
-            icoPrevStatus === ICOState.Suspended ||
-            icoPrevStatus === ICOState.Terminated) {
-          throw new Error(`${icoPrevName} must be in Inactive, NotCompleted or Completed status`);
-        }
-      }
-      console.log('Setting ICO for token...');
-      await ctx.SNPCToken.instance.changeICO(ico.address);
-      console.log(`Starting ICO. End ts: ${end.unix()} sec`);
-      await ico.start(end.unix());
-      console.log({
-                    state: toIcoStateIdToName(new BigNumber(await ico.state.call()))
-                  });
-      break;
-    case 'suspend':
-      await ico.suspend();
-      console.log({
-                    state: toIcoStateIdToName(new BigNumber(await ico.state.call()))
-                  });
-      break;
-    case 'resume':
-      await ico.resume();
-      console.log({
-                    state: toIcoStateIdToName(new BigNumber(await ico.state.call()))
-                  });
-      break;
-    case 'touch':
-      await ico.touch();
-      console.log({
-                    status: toIcoStateIdToName(new BigNumber(await ico.state.call()))
-                  });
-      break;
-    case 'terminate':
-      const icoStatus = (new BigNumber(await ico.state.call())).toNumber();
-      if (icoStatus === ICOState.Terminated ||
-          icoStatus === ICOState.NotCompleted ||
-          icoStatus === ICOState.Completed) {
-        throw new Error(`${icoName} must be in Inactive, Active or Suspend status`);
-      }
-      await confirm(`Terminate ${icoName}. Are you sure?`)
-          .then(async () => {
-            await ico.terminate();
-            console.log({
-                          state: toIcoStateIdToName(new BigNumber(await ico.state.call()))
-                        });
-          });
-      break;
-    case 'transfer-tokens':
-      const fiatInvestor = pullCmdArg('addr');
-      const amount = pullCmdArg('amount');
-      await ico.transferTokens(fiatInvestor, amount);
-      break;
-    case 'investments':
-      const investor = pullCmdArg('addr');
-      const investments = await ico.getInvestments.call(investor);
-      console.log({investments});
-      break;
-    case 'owner':
-      await ico.transferOwnership(pullCmdArg('address'));
-      break;
-    case 'tune':
-      end = moment.utc(pullCmdArg('end'));
-      const lowcap = pullCmdArg('lowcap');
-      const hardcap = pullCmdArg('hardcap');
-      if (!end.unix() || end.isBefore(moment().utc())) {
-        throw new Error('End date is before current time');
-      }
-      console.log(`${icoName} end ts: ${end.unix()} sec`);
-      await ico.tune(end.unix(), new BigNumber(lowcap), new BigNumber(hardcap), 0, 0);
-      const data = {};
-      (<any>data)[stage] = {
-        address: ico.address,
-        owner: await ico.owner.call(),
-        teamWallet: await ico.teamWallet.call(),
-        state: toIcoStateIdToName((await ico.state.call()) as any),
-        weiCollected: await ico.collectedWei.call(),
-        lowCapTokens: await ico.lowCapTokens.call(),
-        hardCapTokens: await ico.hardCapTokens.call(),
-        lowCapTxWei: await ico.lowCapTxWei.call(),
-        hardCapTxWei: await ico.hardCapTxWei.call()
-      };
-      console.log(JSON.stringify(data, null, 2));
-      break;
-    default:
-      throw new Error(`Unknown ico sub-command: ${wcmd || ''}`);
-  }
-};
-
 handlers['token'] = async () => {
   await checkEthNetwork();
   failIfNotDeployed('SNPCToken');
@@ -635,123 +350,30 @@ handlers['token'] = async () => {
     case 'locked':
       console.log({locked: await token.locked.call()});
       break;
-    case 'burn-unsold':
-      const icoAddr = await token.ico.call();
-      let ico = null;
-      let icoName = null;
-      if (ctx.SNPCPreICO.instance.address.toString().toLowerCase() === icoAddr.toString().toLowerCase()) {
-        ico = ctx.SNPCPreICO.instance;
-        icoName = 'SNPCPreICO';
-      }
-      if (ctx.SNPCICOStage1.instance.address.toString().toLowerCase() === icoAddr.toString().toLowerCase()) {
-        ico = ctx.SNPCICOStage1.instance;
-        icoName = 'SNPCICOStage1';
-      }
-      if (ctx.SNPCICOStage2.instance.address.toString().toLowerCase() === icoAddr.toString().toLowerCase()) {
-        ico = ctx.SNPCICOStage2.instance;
-        icoName = 'SNPCICOStage2';
-      }
-      if (ctx.SNPCICOStage3.instance.address.toString().toLowerCase() === icoAddr.toString().toLowerCase()) {
-        ico = ctx.SNPCICOStage3.instance;
-        icoName = 'SNPCICOStage3';
-      }
-      if (!ico) {
-        throw new Error(`SNPCToken use unknown contract address: ${icoAddr || ''}`);
-      }
-      const icoStatus = (new BigNumber(await ico.state.call())).toNumber();
-      if (icoStatus === ICOState.Inactive ||
-          icoStatus === ICOState.Active ||
-          icoStatus === ICOState.Suspended) {
-        throw new Error(`${icoName} must be in Terminated, NotCompleted or Completed status`);
-      }
-      await confirm("Burning of unsold tokens. Are you sure?")
+    case 'burn':
+      await confirm("Burning of unsold tokens. Are you sure? (yes/no)", "yes")
           .then(async () => {
-            await token.burnRemain();
+            await token.burnTokens(new BigNumber(pullCmdArg('tokens')).mul('1e18'));
             console.log({
                           totalSupply: await token.totalSupply.call(),
-                          availableSupply: await token.availableSupply.call()
+                          balance: await token.balanceOf.call(ctx.cfg.ethereum.from)
                         });
           });
       break;
-    case 'ico': {
-      const icoaddr = ctx.cmdOpts.shift();
-      if (icoaddr) {
-        await token.changeICO(icoaddr);
-      }
-      console.log({ico: await token.ico.call()});
+    case 'selfdestruct':
+      await confirm("This action start selfdestruct on token contract. " +
+                    "Are you sure? (YES, I want to destroy token contract/no) ",
+                    "YES, I want to destroy token contract")
+          .then(async () => {
+            const vrs = await signSelfdestruct(token.address);
+            if (vrs != null) {
+              await token.selfDestruct(vrs.v, vrs.r, vrs.s);
+              deleteDeployedContractAddress('ENCNToken');
+            }
+          });
       break;
-    }
     default:
       throw new Error(`Unknown token sub-command: ${wcmd || ''}`);
-  }
-};
-
-handlers['wl'] = async () => {
-  await checkEthNetwork();
-  const stage = ctx.cmdOpts.shift();
-  let ico = null;
-  switch (stage) {
-    case 'pre':
-      failIfNotDeployed('SNPCPreICO');
-      ico = ctx.SNPCPreICO.instance;
-      break;
-    case 'stage1':
-      failIfNotDeployed('SNPCICOStage1');
-      ico = ctx.SNPCICOStage1.instance;
-      break;
-    case 'stage2':
-      failIfNotDeployed('SNPCICOStage2');
-      ico = ctx.SNPCICOStage2.instance;
-      break;
-    case 'stage3':
-      failIfNotDeployed('SNPCICOStage3');
-      ico = ctx.SNPCICOStage3.instance;
-      break;
-    default:
-      throw new Error(`Unknown wl sub-command: ${stage || ''}`);
-  }
-  const wcmd = ctx.cmdOpts.shift();
-  switch (wcmd) {
-    case 'status': {
-      console.log({
-                    whitelistEnabled: await ico.whitelistEnabled.call()
-                  });
-      break;
-    }
-    case 'add': {
-      await ico.whitelist(pullCmdArg('address'));
-      console.log('Success');
-      break;
-    }
-    case 'remove': {
-      await ico.blacklist(pullCmdArg('address'));
-      console.log('Success');
-      break;
-    }
-    case 'disable': {
-      await ico.disableWhitelist();
-      console.log({
-                    whitelistEnabled: await ico.whitelistEnabled.call()
-                  });
-      break;
-    }
-    case 'enable': {
-      await ico.enableWhitelist();
-      console.log({
-                    whitelistEnabled: await ico.whitelistEnabled.call()
-                  });
-      break;
-    }
-    case 'is': {
-      const addr = pullCmdArg('address');
-      console.log({
-                    address: addr,
-                    whitelisted: await ico.whitelisted.call(addr)
-                  });
-      break;
-    }
-    default:
-      throw new Error(`Unknown whitelist sub-command: ${wcmd || ''}`);
   }
 };
 
@@ -807,38 +429,18 @@ function usage(error?: string): never {
       '\n\t[-h|--help]' +
       '\n\t<command> [command options]' +
       '\nCommands:' +
-      '\n\tdeploy                                       - Deploy SNPC token and Pre-ICO/ICO smart contracts' +
+      '\n\tdeploy                                       - Deploy SNPC token smart contract' +
       '\n\tstatus                                       - Get contracts status' +
-      '\n\tico <stage> state                            - Get ico state' +
-      '\n\tico <stage> start <end>                      - Start ICO' +
-      '\n\tico <stage> touch                            - Touch ICO. Recalculate ICO state based on current block time.' +
-      '\n\tico <stage> suspend                          - Suspend ICO (only if ICO is Active)' +
-      '\n\tico <stage> resume                           - Resume ICO (only if ICO is Suspended)' +
-      '\n\tico <stage> terminate                        - Terminate ICO (can not be activate)' +
-      '\n\tico <stage> transfer-tokens <addr> <amount>  - Transfer tokens to investor (fiat sales)' +
-      '\n\tico <stage> investments <addr>               - Total investments from <addr>' +
-      '\n\tico <stage> tune <end> <lowcap> <hardcap>    - Set end date/low-cap-tokens/hard-cap-tokens ' +
-                                                      'for ICO (Only in suspended state)' +
-      '\n\t                                         Eg: node ./cli.js ico pre tune ' +
-                                                      '\'2018-03-20\' \'3000e18\' \'30000e18\'' +
       '\n\ttoken balance <addr>                  - Get token balance for address' +
       '\n\ttoken lock                            - Lock token contract (no token transfers are allowed)' +
       '\n\ttoken unlock                          - Unlock token contract' +
       '\n\ttoken locked                          - Get token lock status' +
-      '\n\ttoken ico [addr]                      - Change ICO contract for token (if <addr> specified) ' +
-                                                      'or view view current ICO contract for token' +
-      '\n\ttoken burn-unsold                     - Burning of unsold tokens' +
+      '\n\ttoken burn <tokens>                   - Burning of tokens (without decimals) on current wallet' +
+      '\n\ttoken selfdestruct                    - Destroy token contract in ethereum network (can be undone)' +
       '\n\tgroup reserve <addr> <group> <tokens> - Reserve tokens (without decimals) to <addr> for <group>' +
       '\n\tgroup reserved <group>                - Get number of remaining tokens for <group>' +
-      '\n\twl <stage> status                     - Check if whitelisting enabled' +
-      '\n\twl <stage> add <addr>                 - Add <addr> to ICO whitelist' +
-      '\n\twl <stage> remove <addr>              - Remove <addr> from ICO whitelist' +
-      '\n\twl <stage> disable                    - Disable address whitelisting for ICO' +
-      '\n\twl <stage> enable                     - Enable address whitelisting for ICO' +
-      '\n\twl <stage> is <addr>                  - Check if given <addr> in whitelist' +
       '\n' +
-      '\n\t\t <stage> - ICO Stage: pre|stage1|stage2|stage3' +
-      '\n\t\t <group> - Token reservation group: team|bounty|partners|reserve' +
+      '\n\t\t <group> - Token reservation group: team|bounty|advisors|reserve|stackingBonus' +
       '\n\t\t <addr> - Ethereum address' +
       '\n'
   );

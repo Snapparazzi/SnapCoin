@@ -1,13 +1,15 @@
 pragma solidity 0.4.24;
 
 import "./commons/SafeMath.sol";
-import "./base/BaseICOToken.sol";
+import "./base/BaseFixedERC20Token.sol";
+import "./flavours/SelfDestructible.sol";
+import "./flavours/Withdrawal.sol";
 
 
 /**
  * @title SNPC token contract.
  */
-contract SNPCToken is BaseICOToken {
+contract SNPCToken is BaseFixedERC20Token, SelfDestructible, Withdrawal {
     using SafeMath for uint;
 
     string public constant name = "SnapCoin";
@@ -18,7 +20,15 @@ contract SNPCToken is BaseICOToken {
 
     uint internal constant ONE_TOKEN = 1e18;
 
-    uint public reservedTeamUnlockAt;
+    /// @dev team reserved balances
+    mapping(address => uint) public teamReservedBalances;
+
+    uint public teamReservedUnlockAt;
+
+    /// @dev bounty reserved balances
+    mapping(address => uint) public bountyReservedBalances;
+
+    uint public bountyReservedUnlockAt;
 
     /// @dev Fired some tokens distributed to someone from staff,business
     event ReservedTokensDistributed(address indexed to, uint8 group, uint amount);
@@ -28,21 +38,30 @@ contract SNPCToken is BaseICOToken {
     constructor(uint totalSupplyTokens_,
             uint teamTokens_,
             uint bountyTokens_,
-            uint partnersTokens_,
-            uint reserveTokens_) public BaseICOToken(totalSupplyTokens_ * ONE_TOKEN) {
+            uint advisorsTokens_,
+            uint reserveTokens_,
+            uint stackingBonusTokens_) public {
+        locked = true;
+        totalSupply = totalSupplyTokens_.mul(ONE_TOKEN);
+        uint availableSupply = totalSupply;
 
-        require(availableSupply == totalSupply);
+        reserved[RESERVED_TEAM_GROUP] = teamTokens_.mul(ONE_TOKEN);
+        reserved[RESERVED_BOUNTY_GROUP] = bountyTokens_.mul(ONE_TOKEN);
+        reserved[RESERVED_ADVISORS_GROUP] = advisorsTokens_.mul(ONE_TOKEN);
+        reserved[RESERVED_RESERVE_GROUP] = reserveTokens_.mul(ONE_TOKEN);
+        reserved[RESERVED_STACKING_BONUS_GROUP] = stackingBonusTokens_.mul(ONE_TOKEN);
         availableSupply = availableSupply
-            .sub(teamTokens_ * ONE_TOKEN)
-            .sub(bountyTokens_ * ONE_TOKEN)
-            .sub(reserveTokens_ * ONE_TOKEN)
-            .sub(partnersTokens_ * ONE_TOKEN);
-        reserved[RESERVED_TEAM_GROUP] = teamTokens_ * ONE_TOKEN;
-        reserved[RESERVED_BOUNTY_GROUP] = bountyTokens_ * ONE_TOKEN;
-        reserved[RESERVED_PARTNERS_GROUP] = partnersTokens_ * ONE_TOKEN;
-        reserved[RESERVED_RESERVE_GROUP] = reserveTokens_ * ONE_TOKEN;
-        reservedTeamUnlockAt = block.timestamp + 365 days;
-        // 1 year
+            .sub(reserved[RESERVED_TEAM_GROUP])
+            .sub(reserved[RESERVED_BOUNTY_GROUP])
+            .sub(reserved[RESERVED_ADVISORS_GROUP])
+            .sub(reserved[RESERVED_RESERVE_GROUP])
+            .sub(reserved[RESERVED_STACKING_BONUS_GROUP]);
+        teamReservedUnlockAt = block.timestamp + 365 days; // 1 year
+        bountyReservedUnlockAt = block.timestamp + 91 days; // 3 month
+
+        balances[owner] = availableSupply;
+        emit Transfer(0, this, availableSupply);
+        emit Transfer(this, owner, balances[owner]);
     }
 
     // Disable direct payments
@@ -50,13 +69,12 @@ contract SNPCToken is BaseICOToken {
         revert();
     }
 
-    function burnRemain() public onlyOwner {
-        require(availableSupply > 0);
-        uint burned = availableSupply;
-        totalSupply = totalSupply.sub(burned);
-        availableSupply = 0;
+    function burnTokens(uint amount) public {
+        require(balances[msg.sender] >= amount);
+        totalSupply = totalSupply.sub(amount);
+        balances[msg.sender] = balances[msg.sender].sub(amount);
 
-        emit TokensBurned(burned);
+        emit TokensBurned(amount);
     }
 
     // --------------- Reserve specific
@@ -64,9 +82,11 @@ contract SNPCToken is BaseICOToken {
 
     uint8 public constant RESERVED_BOUNTY_GROUP = 0x2;
 
-    uint8 public constant RESERVED_PARTNERS_GROUP = 0x4;
+    uint8 public constant RESERVED_ADVISORS_GROUP = 0x4;
 
     uint8 public constant RESERVED_RESERVE_GROUP = 0x8;
+
+    uint8 public constant RESERVED_STACKING_BONUS_GROUP = 0x10;
 
     /// @dev Token reservation mapping: key(RESERVED_X) => value(number of tokens)
     mapping(uint8 => uint) public reserved;
@@ -86,12 +106,63 @@ contract SNPCToken is BaseICOToken {
      * @param amount_ Number of tokens distributed with decimals part
      */
     function assignReserved(address to_, uint8 group_, uint amount_) public onlyOwner {
-        require(to_ != address(0) && (group_ & 0xF) != 0);
-        require(group_ != RESERVED_TEAM_GROUP || block.timestamp >= reservedTeamUnlockAt);
+        require(to_ != address(0) && (group_ & 0x1F) != 0);
 
         // SafeMath will check reserved[group_] >= amount
         reserved[group_] = reserved[group_].sub(amount_);
         balances[to_] = balances[to_].add(amount_);
+        if (group_ == RESERVED_TEAM_GROUP) {
+            teamReservedBalances[to_] = teamReservedBalances[to_].add(amount_);
+        } else if (group_ == RESERVED_BOUNTY_GROUP) {
+            bountyReservedBalances[to_] = bountyReservedBalances[to_].add(amount_);
+        }
         emit ReservedTokensDistributed(to_, group_, amount_);
     }
+
+    /**
+     * @dev Gets the balance of team reserved tokens the specified address.
+     * @param owner_ The address to query the the balance of.
+     * @return An uint representing the amount owned by the passed address.
+     */
+    function teamReservedBalanceOf(address owner_) public view returns (uint) {
+        return teamReservedBalances[owner_];
+    }
+
+    /**
+     * @dev Gets the balance of bounty reserved tokens the specified address.
+     * @param owner_ The address to query the the balance of.
+     * @return An uint representing the amount owned by the passed address.
+     */
+    function bountyReservedBalanceOf(address owner_) public view returns (uint) {
+        return bountyReservedBalances[owner_];
+    }
+
+    function getAllowedForTransferTokens(address from_) public view returns (uint) {
+        uint allowed = balances[from_];
+
+        if (teamReservedBalances[from_] > 0) {
+            if (block.timestamp < teamReservedUnlockAt) {
+                allowed = allowed.sub(teamReservedBalances[from_]);
+            }
+        }
+
+        if (bountyReservedBalances[from_] > 0) {
+            if (block.timestamp < bountyReservedUnlockAt) {
+                allowed = allowed.sub(bountyReservedBalances[from_]);
+            }
+        }
+
+        return allowed;
+    }
+
+    function transfer(address to_, uint value_) public whenNotLocked returns (bool) {
+        require(value_ <= getAllowedForTransferTokens(msg.sender));
+        return super.transfer(to_, value_);
+    }
+
+    function transferFrom(address from_, address to_, uint value_) public whenNotLocked returns (bool) {
+        require(value_ <= getAllowedForTransferTokens(from_));
+        return super.transferFrom(from_, to_, value_);
+    }
+
 }

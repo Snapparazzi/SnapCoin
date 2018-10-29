@@ -6,36 +6,9 @@ ethereum:
   gasPrice: '10e9'
   SNPCToken:
     schema: '{moduledir}/build/contracts/SNPCToken.json'
-    totalSupplyTokens: '600e6'
-    reservedTeamTokens: '60e6'
-    reservedBountyTokens: '60e6'
-    reservedPartnersTokens: '12e6'
-    reservedReserveTokens: '18e6'
-  SNPCPreICO:
-    schema: '{moduledir}/build/contracts/SNPCPreICO.json'
-    teamWallet: '0x27f83c24402ddb237ab5e9ea16934e44df339dbf'
-    lowCapTokens: '0'       # 0
-    hardCapTokens: '153e24' # 90 000 ETH
-    lowCapTxWei: '1e16'     # 0.01 ETH # FIXME
-    hardCapTxWei: '125e20'  # 12 500 ETH
-  SNPCICOStage1:
-    schema: '{moduledir}/build/contracts/SNPCICOStage1.json'
-    teamWallet: '0x27f83c24402ddb237ab5e9ea16934e44df339dbf'
-    lowCapTokens: '0'       # 0
-    hardCapTokens: '270e24' # 150 000 ETH
-    lowCapTxWei: '1e16'     # 0.01 ETH # FIXME
-    hardCapTxWei: '150e21 ' # 150 000 ETH
-  SNPCICOStage2:
-    schema: '{moduledir}/build/contracts/SNPCICOStage2.json'
-    teamWallet: '0x27f83c24402ddb237ab5e9ea16934e44df339dbf'
-    lowCapTokens: '0'       # 0
-    hardCapTokens: '201e24' # 150 000 ETH
-    lowCapTxWei: '1e16'     # 0.01 ETH # FIXME
-    hardCapTxWei: '150e21'  # 150 000 ETH
-  SNPCICOStage3:
-    schema: '{moduledir}/build/contracts/SNPCICOStage3.json'
-    teamWallet: '0x27f83c24402ddb237ab5e9ea16934e44df339dbf'
-    lowCapTokens: '0'       # 0
-    hardCapTokens: '192e24' # 150 000 ETH
-    lowCapTxWei: '1e16'     # 0.01 ETH # FIXME
-    hardCapTxWei: '150e21'  # 150 000 ETH
+    totalSupplyTokens: '735e6'
+    reservedTeamTokens: '441e5'
+    reservedBountyTokens: '3675e4'
+    reservedAdvisorsTokens: '2205e4'
+    reservedReserveTokens: '735e5'
+    reservedStackingBonusTokens: '441e5'

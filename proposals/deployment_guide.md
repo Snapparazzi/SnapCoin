@@ -65,7 +65,7 @@ node cli.js <command> [command options]
 ### Keys
 
 * `<stage>` - ICO Stage: `pre|stage1|stage2|stage3`
-* `<group>` - Token reservation group: `team|bounty|partners|reserve`
+* `<group>` - Token reservation group: `team|bounty|advisors|reserve|stackingBonus`
 * `<addr>` - Ethereum address
 
 ### Commands
