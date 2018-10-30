@@ -63,7 +63,23 @@ interface ISelfDestructible extends IContractInstance, IOwnable {
   selfDestruct(v: NumberLike, r: NumberLike, s: NumberLike, tr?: Web3.TransactionRequest): Promise<ITXResult>;
 }
 
-interface IBaseFixedERC20Token extends IContractInstance, ILockable, ISelfDestructible {
+/**
+ * @dev Base withdrawal smart contract
+ */
+interface IWithdrawal extends IContractInstance, IOwnable {
+
+  /**
+   * Withdraw all funds from contract, if any. Only for owner
+   */
+  withdraw(tr?: Web3.TransactionRequest): Promise<ITXResult>;
+
+  /**
+   * Withdraw all tokens from contract, if any. Only for owner
+   */
+  withdrawTokens(token: address, tr?: Web3.TransactionRequest): Promise<ITXResult>;
+}
+
+interface IBaseFixedERC20Token extends IContractInstance, ILockable {
   // ERC20 Total supply
   totalSupply: ISimpleCallable<NumberLike>;
 
@@ -121,7 +137,7 @@ interface IBaseFixedERC20Token extends IContractInstance, ILockable, ISelfDestru
 /**
  * ERC20 SNPC Token
  */
-interface ISNPCToken extends IBaseFixedERC20Token {
+interface ISNPCToken extends IBaseFixedERC20Token, IWithdrawal, ISelfDestructible {
   // Token name
   name: ISimpleCallable<string>;
 

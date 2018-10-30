@@ -1,8 +1,8 @@
 import {ItTestFn} from '../globals';
 import * as BigNumber from 'bignumber.js';
 import {TokenReservation} from '../contracts';
-import {assertEvmThrows, assertEvmInvalidOpcode, assertEvmIsNotAContractAddress} from './lib/assert';
-import {web3LatestTime, Seconds, web3IncreaseTimeTo, web3IncreaseTime} from './lib/time';
+import {assertEvmThrows, assertEvmIsNotAContractAddress} from './lib/assert';
+import {Seconds, web3IncreaseTimeTo} from './lib/time';
 
 const EthUtil = require('ethereumjs-util');
 
@@ -49,13 +49,6 @@ contract('SNPCContracts', function (accounts: string[]) {
     team1: accounts[cnt++],
     investor1: accounts[cnt++],
     investor2: accounts[cnt++],
-    investor3: accounts[cnt++],
-    investor4: accounts[cnt++],
-    investor5: accounts[cnt++],
-    investor6: accounts[cnt++],
-    investor7: accounts[cnt++],
-    investor8: accounts[cnt++],
-    investor9: accounts[cnt++],
     reserve1: accounts[cnt++],
     reserve2: accounts[cnt++]
   } as { [k: string]: string };
@@ -244,7 +237,7 @@ contract('SNPCContracts', function (accounts: string[]) {
     );
   });
 
-  it('token unsold burning', async () => {
+  it('token burning', async () => {
     const token = await SNPCToken.deployed();
 
     const ownerBalance = new BigNumber(await token.balanceOf.call(actors.owner));
@@ -287,60 +280,163 @@ contract('SNPCContracts', function (accounts: string[]) {
                  new BigNumber(tokens(735e6)).sub(ownerBurn).sub(someone1Balance).toString());
   });
 
-  /*  it('token transfers', async () => {
-      const token = await SNPCToken.deployed();
+  it('token transfers', async () => {
+    const token = await SNPCToken.deployed();
 
-      // check lock
-      assert.isTrue(await token.locked.call());
-      await token.unlock();
-      assert.isFalse(await token.locked.call());
+    // check lock
+    assert.isTrue(await token.locked.call());
+    await token.unlock();
+    assert.isFalse(await token.locked.call());
 
-      // check balances
-      let balance5 = new BigNumber(await token.balanceOf.call(actors.investor5));
+    // initial state for investor1
+    await token.assignReserved(actors.investor1, TokenReservation.Bounty, tokens(10e6), {from: actors.owner});
+    await token.assignReserved(actors.investor1, TokenReservation.Team, tokens(5e6), {from: actors.owner});
+    const txres = await token.transfer(actors.investor1, tokens(20e6), {from: actors.owner});
+    assert.equal(txres.logs[0].event, 'Transfer');
+    assert.equal(txres.logs[0].args.from, actors.owner);
+    assert.equal(txres.logs[0].args.to, actors.investor1);
+    assert.equal(txres.logs[0].args.value, tokens(20e6));
+    // initial state for investor2
+    await token.assignReserved(actors.investor2, TokenReservation.Bounty, tokens(10e6), {from: actors.owner});
+    await token.assignReserved(actors.investor2, TokenReservation.Team, tokens(5e6), {from: actors.owner});
+    await token.transfer(actors.investor2, tokens(20e6), {from: actors.owner});
 
-      let balance6 = new BigNumber(await token.balanceOf.call(actors.investor6));
+    const reservedBountyUnlockAt = new BigNumber(await token.bountyReservedUnlockAt.call());
+    await web3IncreaseTimeTo(reservedBountyUnlockAt.sub(Seconds.hours(1)).toNumber());
 
-      // check allowed transfer
-      const balanceTransfer = balance5.div(new BigNumber(2));
-      await token.transfer(actors.investor6, balanceTransfer, {from: actors.investor5});
-      balance5 = balance5.sub(balanceTransfer);
-      balance6 = balance6.add(balanceTransfer);
+    // check transfer from 1 to 2 (bounty and team reserved tokens)
+    // check balances
+    let balance1 = new BigNumber(await token.balanceOf.call(actors.investor1));
+    const balance1BountyReserved = new BigNumber(await token.bountyReservedBalanceOf.call(actors.investor1));
+    const balance1TeamReserved = new BigNumber(await token.teamReservedBalanceOf.call(actors.investor1));
+    let balance1Allowed = new BigNumber(await token.getAllowedForTransferTokens.call(actors.investor1));
+    // before bounty reserve unlock date - without all bonuses
+    assert.equal(balance1.sub(balance1BountyReserved).sub(balance1TeamReserved).toString(), balance1Allowed.toString());
 
-      // check balances of sender
-      assert.equal((await token.balanceOf.call(actors.investor5)).toString(), balance5.toString());
-      // and receiver
-      assert.equal((await token.balanceOf.call(actors.investor6)).toString(), balance6.toString());
+    let balance2 = new BigNumber(await token.balanceOf.call(actors.investor2));
+    const balance2BountyReserved = new BigNumber(await token.bountyReservedBalanceOf.call(actors.investor2));
+    const balance2TeamReserved = new BigNumber(await token.teamReservedBalanceOf.call(actors.investor2));
+    let balance2Allowed = new BigNumber(await token.getAllowedForTransferTokens.call(actors.investor2));
+    // before bounty reserve unlock date - without all bonuses
+    assert.equal(balance2.sub(balance2BountyReserved).sub(balance2TeamReserved).toString(), balance2Allowed.toString());
 
-      // check not approved transferFrom
-      await assertEvmThrows(token.transferFrom(actors.investor5, actors.investor6, balanceTransfer,
-                                               {from: actors.team1}));
-      await token.approve(actors.team1, balanceTransfer, {from: actors.investor5});
-      // check approved, but over limit transferFrom
-      await assertEvmThrows(token.transferFrom(actors.investor5, actors.investor6,
-                                               balanceTransfer.add(new BigNumber(1)), {from: actors.team1}));
+    // check more than allowed transfer
+    await assertEvmThrows(token.transfer(actors.investor2, balance1Allowed.add(new BigNumber(1)),
+                                         {from: actors.investor1}));
 
-      // check allowed and approved transferFrom
-      await token.transferFrom(actors.investor5, actors.investor6, balanceTransfer, {from: actors.team1});
-      balance5 = balance5.sub(balanceTransfer);
-      balance6 = balance6.add(balanceTransfer);
+    // check allowed transfer
+    const balanceTransfer = balance1Allowed.div(new BigNumber(2));
+    await token.transfer(actors.investor2, balanceTransfer, {from: actors.investor1});
+    balance1 = balance1.sub(balanceTransfer);
+    balance2 = balance2.add(balanceTransfer);
+    balance2Allowed = balance2Allowed.add(balanceTransfer);
+    balance1Allowed = balance1Allowed.sub(balanceTransfer);
 
-      // check balances of sender
-      assert.equal((await token.balanceOf.call(actors.investor5)).toString(), balance5.toString());
-      // and receiver
-      assert.equal((await token.balanceOf.call(actors.investor6)).toString(), balance6.toString());
+    // check balances of sender
+    assert.equal((await token.balanceOf.call(actors.investor1)).toString(), balance1.toString());
+    assert.equal((await token.getAllowedForTransferTokens.call(actors.investor1)).toString(),
+                 balance1Allowed.toString());
+    assert.equal((await token.bountyReservedBalanceOf.call(actors.investor1)).toString(),
+                 balance1BountyReserved.toString());
+    // and receiver
+    assert.equal((await token.balanceOf.call(actors.investor2)).toString(), balance2.toString());
+    assert.equal((await token.getAllowedForTransferTokens.call(actors.investor2)).toString(),
+                 balance2Allowed.toString());
+    assert.equal((await token.bountyReservedBalanceOf.call(actors.investor2)).toString(),
+                 balance2BountyReserved.toString());
 
-      assert.equal(balance5.toString(), '0');
+    // check not approved transferFrom
+    await assertEvmThrows(token.transferFrom(actors.investor1, actors.investor2, balanceTransfer,
+                                             {from: actors.team1}));
+    await token.approve(actors.team1, balanceTransfer, {from: actors.investor1});
+    // check approved, but over limit transferFrom
+    await assertEvmThrows(token.transferFrom(actors.investor1, actors.investor2,
+                                             balanceTransfer.add(new BigNumber(1)), {from: actors.team1}));
 
-      const reservedBountyUnlockAt = (await token.bountyReservedUnlockAt.call()) as number;
-      await web3IncreaseTimeTo(reservedBountyUnlockAt - Seconds.hours(1));
+    // check allowed and approved transferFrom
+    await token.transferFrom(actors.investor1, actors.investor2, balanceTransfer, {from: actors.team1});
+    balance1 = balance1.sub(balanceTransfer);
+    balance2 = balance2.add(balanceTransfer);
+    balance2Allowed = balance2Allowed.add(balanceTransfer);
+    balance1Allowed = balance1Allowed.sub(balanceTransfer);
+    assert.equal(balance1Allowed.toString(), '0');
 
-      await web3IncreaseTimeTo(reservedBountyUnlockAt + 1);
+    // check balances of sender
+    assert.equal((await token.balanceOf.call(actors.investor1)).toString(), balance1.toString());
+    assert.equal((await token.getAllowedForTransferTokens.call(actors.investor1)).toString(),
+                 balance1Allowed.toString());
+    // and receiver
+    assert.equal((await token.balanceOf.call(actors.investor2)).toString(), balance2.toString());
+    assert.equal((await token.getAllowedForTransferTokens.call(actors.investor2)).toString(),
+                 balance2Allowed.toString());
 
-      const reservedTeamUnlockAt = (await token.teamReservedUnlockAt.call()) as number;
-      await web3IncreaseTimeTo(reservedTeamUnlockAt - Seconds.hours(1));
+    await web3IncreaseTimeTo(reservedBountyUnlockAt.add(1).toNumber());
 
-      await web3IncreaseTimeTo(reservedTeamUnlockAt + 1);
-    });*/
+    // bounty tokens unlocked
+    balance2Allowed = balance2Allowed.add(balance2BountyReserved);
+    balance1Allowed = balance1Allowed.add(balance1BountyReserved);
+
+    // check balances of sender
+    assert.equal((await token.balanceOf.call(actors.investor1)).toString(), balance1.toString());
+    assert.equal((await token.getAllowedForTransferTokens.call(actors.investor1)).toString(),
+                 balance1Allowed.toString());
+    // and receiver
+    assert.equal((await token.balanceOf.call(actors.investor2)).toString(), balance2.toString());
+    assert.equal((await token.getAllowedForTransferTokens.call(actors.investor2)).toString(),
+                 balance2Allowed.toString());
+
+    const reservedTeamUnlockAt = new BigNumber(await token.teamReservedUnlockAt.call());
+    await web3IncreaseTimeTo(reservedTeamUnlockAt.sub(Seconds.hours(1)).toNumber());
+
+    // nothing changed
+    // check balances of sender
+    assert.equal((await token.balanceOf.call(actors.investor1)).toString(), balance1.toString());
+    assert.equal((await token.getAllowedForTransferTokens.call(actors.investor1)).toString(),
+                 balance1Allowed.toString());
+    // and receiver
+    assert.equal((await token.balanceOf.call(actors.investor2)).toString(), balance2.toString());
+    assert.equal((await token.getAllowedForTransferTokens.call(actors.investor2)).toString(),
+                 balance2Allowed.toString());
+
+    await web3IncreaseTimeTo(reservedTeamUnlockAt.add(1).toNumber());
+
+    // team tokens unlocked
+    balance2Allowed = balance2Allowed.add(balance2TeamReserved);
+    balance1Allowed = balance1Allowed.add(balance1TeamReserved);
+
+    // check balances of sender
+    assert.equal((await token.balanceOf.call(actors.investor1)).toString(), balance1.toString());
+    assert.equal((await token.getAllowedForTransferTokens.call(actors.investor1)).toString(),
+                 balance1Allowed.toString());
+    // and receiver
+    assert.equal((await token.balanceOf.call(actors.investor2)).toString(), balance2.toString());
+    assert.equal((await token.getAllowedForTransferTokens.call(actors.investor2)).toString(),
+                 balance2Allowed.toString());
+  });
+
+  it('withdraw stuck tokens', async () => {
+    const token = await SNPCToken.deployed();
+
+    assert.isFalse(await token.locked.call());
+
+    assert.equal((await token.balanceOf.call(token.address)).toString(), '0');
+    await token.transfer(token.address, tokens(20e6), {from: actors.owner});
+    assert.equal((await token.balanceOf.call(token.address)).toString(), tokens(20e6));
+
+    // withdraw only for owner
+    await assertEvmThrows(token.withdraw({from: actors.someone1}));
+    await token.withdraw({from: actors.owner});
+
+    // withdrawTokens only for owner
+    await assertEvmThrows(token.withdrawTokens(token.address, {from: actors.someone1}));
+    const txres = await token.withdrawTokens(token.address, {from: actors.owner});
+
+    assert.equal(txres.logs[0].event, 'Transfer');
+    assert.equal(txres.logs[0].args.from, token.address);
+    assert.equal(txres.logs[0].args.to, actors.owner);
+    assert.equal(txres.logs[0].args.value, tokens(20e6));
+    assert.equal((await token.balanceOf.call(token.address)).toString(), '0');
+  });
 
   it('token must be destructible', async () => {
     const token = await SNPCToken.deployed();
@@ -361,5 +457,4 @@ contract('SNPCContracts', function (accounts: string[]) {
     await token.selfDestruct(vrs.v, vrs.r, vrs.s, {from: actors.owner});
     await assertEvmIsNotAContractAddress(token.owner.call());
   });
-
 });
