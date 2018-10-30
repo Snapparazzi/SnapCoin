@@ -1,5 +1,5 @@
 ethereum:
-  endpoint: 'http://localhost:8545'
+  endpoint: 'http://localhost:8549'
   from: '0x475022e2471dbd4b8c4bfd5d92555662f3188698'
   lockfilesDir: "{cwd}"
   gas: '45e5'
