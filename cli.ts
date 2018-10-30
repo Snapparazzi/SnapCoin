@@ -351,12 +351,14 @@ handlers['token'] = async () => {
       console.log({locked: await token.locked.call()});
       break;
     case 'burn':
-      await confirm("Burning of unsold tokens. Are you sure? (yes/no)", "yes")
+      await confirm("Burning tokens. Are you sure? (yes/no) ", "yes")
           .then(async () => {
+            const balanceBefore = (await token.balanceOf.call(ctx.cfg.ethereum.from)).toString();
             await token.burnTokens(new BigNumber(pullCmdArg('tokens')).mul('1e18'));
             console.log({
-                          totalSupply: await token.totalSupply.call(),
-                          balance: await token.balanceOf.call(ctx.cfg.ethereum.from)
+                          totalSupply: (await token.totalSupply.call()).toString(),
+                          balanceBefore,
+                          balance: (await token.balanceOf.call(ctx.cfg.ethereum.from)).toString()
                         });
           });
       break;
@@ -368,7 +370,7 @@ handlers['token'] = async () => {
             const vrs = await signSelfdestruct(token.address);
             if (vrs != null) {
               await token.selfDestruct(vrs.v, vrs.r, vrs.s);
-              deleteDeployedContractAddress('ENCNToken');
+              deleteDeployedContractAddress('SNPCToken');
             }
           });
       break;
