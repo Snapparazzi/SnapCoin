@@ -60,8 +60,8 @@ contract SNPCToken is BaseFixedERC20Token, SelfDestructible, Withdrawal {
         bountyReservedUnlockAt = block.timestamp + 91 days; // 3 month
 
         balances[owner] = availableSupply;
-        emit Transfer(0, this, availableSupply);
-        emit Transfer(this, owner, balances[owner]);
+        emit Transfer(0, address(this), availableSupply);
+        emit Transfer(address(this), owner, balances[owner]);
     }
 
     // Disable direct payments

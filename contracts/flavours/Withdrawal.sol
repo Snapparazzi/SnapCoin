@@ -18,7 +18,7 @@ contract Withdrawal is Ownable {
     // withdraw stuck tokens, if any, only for owner
     function withdrawTokens(address _someToken) public onlyOwner {
         ERC20Token someToken = ERC20Token(_someToken);
-        uint balance = someToken.balanceOf(this);
+        uint balance = someToken.balanceOf(address(this));
         someToken.transfer(owner, balance);
     }
 }
