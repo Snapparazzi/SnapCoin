@@ -2,9 +2,8 @@
 
 ## Requirements
 * nodejs >= 8.9.x (https://nodejs.org/)
-* yarn package manager (https://yarnpkg.com)
 * parity ethereum client (https://www.parity.io/)
-* latest version of SNPC project (https://github.com/Softmotions/SnapCoin)
+* latest version of SNPC project (https://github.com/Snapparazzi/SnapCoin)
 
 # Precautions
 
@@ -56,7 +55,7 @@ Start `parity` in terminal and wait until sync complete
 ```
 
 ## SNPC commands manual
-All commands in this section must be executed in terminal from directory with project, e.g snap-coin-token.
+All commands in this section must be executed in terminal from directory with project, e.g snap-coin.
 
 ### Usage syntax
 ```bash
@@ -64,35 +63,15 @@ node cli.js <command> [command options]
 ```
 ### Keys
 
-* `<stage>` - ICO Stage: `pre|stage1|stage2|stage3`
 * `<group>` - Token reservation group: `team|bounty|advisors|reserve|stackingBonus`
 * `<addr>` - Ethereum address
 
 ### Commands
 
 * `deploy`\
-Deploy SNPC token and Pre-ICO/ICO smart contracts
+Deploy SNPC token smart contract
 * `status`\
 Get contracts status
-* `ico <stage> state`\
-Get ico state
-* `ico <stage> start <end>`\
-Start ICO
-* `ico <stage> touch`\
-Touch ICO. Recalculate ICO state based on current block time.
-* `ico <stage> suspend`\
-Suspend ICO (only if ICO is Active)
-* `ico <stage> resume`\
-Resume ICO (only if ICO is Suspended)
-* `ico <stage> terminate`\
-Terminate ICO (can not be activate)
-* `ico <stage> transfer-tokens <addr> <amount>`\
-Transfer <amount> tokens to fiat-investor <addr>
-* `ico <stage> investments <addr>`\
-Total investments from <addr>
-* `ico <stage> tune <end> <lowcap> <hardcap>`\
-Set end date/low-cap/hard-cap for ICO (Only in suspended state).\
-Eg: node ./cli.js ico pre tune '2018-09-20' '50e6' '500e6''
 * `token balance <addr>`\
 Get token balance for address
 * `token lock`\
@@ -101,23 +80,11 @@ Lock token contract (no token transfers are allowed)
 Unlock token contract
 * `token locked`\
 Get token lock status
-* `token ico [addr]`\
-Change ICO contract for token (if addr specified) or view view current ICO contract for token
-* `token burn-unsold`\
-Burning of unsold tokens
+* `token burn <tokens>`\
+Burning of tokens (without decimals) on current wallet
+* `token selfdestruct`\
+Destroy token contract in ethereum network (can be undone)
 * `group reserve <addr> <group> <tokens>`\
 Reserve tokens (without decimals) to <addr> for <group>
 * `group reserved <group>`\
 Get number of remaining tokens for <group>
-* `wl <stage> status`\
-Check if whitelisting enabled
-* `wl <stage> add <addr>`\
-Add <addr> to ICO whitelist
-* `wl <stage> remove <addr>`\
-Remove <addr> from ICO whitelist
-* `wl <stage> disable`\
-Disable address whitelisting for ICO
-* `wl <stage> enable`\
-Enable address whitelisting for ICO
-* `wl <stage> is <addr>`\
-Check if given <addr> in whitelist
